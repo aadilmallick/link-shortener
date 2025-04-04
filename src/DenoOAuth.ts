@@ -16,6 +16,7 @@ export interface GoogleUser {
   id: string;
   name: string;
   picture: string;
+  email?: string;
 }
 
 export class GitHubOAuth {
@@ -94,10 +95,16 @@ export class GoogleOAuth {
   #redirectUriPath: string;
   private oauthConfig: ReturnType<typeof createGoogleOAuthConfig>;
 
-  constructor(redirectUri: string) {
+  constructor(redirectUri: string, scope: "email" | null = null) {
+    const extraScopes = scope
+      ? ["https://www.googleapis.com/auth/userinfo.email"]
+      : [];
     this.oauthConfig = createGoogleOAuthConfig({
       redirectUri,
-      scope: "https://www.googleapis.com/auth/userinfo.profile",
+      scope: [
+        "https://www.googleapis.com/auth/userinfo.profile",
+        ...extraScopes,
+      ],
     });
     this.#redirectUriPath = new URL(redirectUri).pathname;
   }
@@ -155,7 +162,7 @@ export class GoogleOAuth {
     const { handleCallback } = createHelpers(this.oauthConfig);
     const { response, tokens, sessionId } = await handleCallback(req);
     const userData = await this.getGoogleProfile(tokens?.accessToken);
-    const filteredData = pick(userData, ["id", "name", "picture"]);
+    const filteredData = pick(userData, ["id", "name", "picture", "email"]);
     cb(sessionId, filteredData);
     return response;
   }

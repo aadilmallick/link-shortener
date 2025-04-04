@@ -14,7 +14,7 @@ const Layout = (props: { children: ComponentChildren }) => {
       <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Document</title>
+        <title>Link Shortener</title>
         <style>{css}</style>
       </head>
       <body>
@@ -86,6 +86,7 @@ function CreateShortlinkPage() {
   return (
     <>
       <h2>Create a New Shortlink</h2>
+      <a href="/oauth/signout">Logout</a>
       <form action="/links" method="POST">
         <div>
           <label>

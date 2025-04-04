@@ -6,6 +6,7 @@ import {
   GitHubUser,
   incrementClickCount,
   storeShortLink,
+  storeUser,
   User,
 } from "./src/databaseController.ts";
 import { HomePage, LinksPage } from "./src/index.tsx";
@@ -19,15 +20,23 @@ import {
   userAuthLocalMiddleware,
   userAuthMiddleware,
 } from "./src/server.ts";
+import { githubAuth } from "./src/DenoOAuth.ts";
 
-const oauthConfig = createGitHubOAuthConfig({
-  redirectUri: Deno.env.get("REDIRECT_URI"),
+app.get("/oauth/signin", async (req) => {
+  return await githubAuth.signIn(req);
 });
-const { signIn, signOut } = createHelpers(oauthConfig);
-
-app.get("/oauth/signin", (req: Request) => signIn(req));
-app.get("/oauth/signout", signOut);
-app.get("/oauth/callback", handleGithubCallback);
+app.get("/oauth/signout", async (req) => {
+  return await githubAuth.signOut(req);
+});
+app.get(githubAuth.redirectUriPath, async (req: Request) => {
+  const response = await githubAuth.onGithubCallback(
+    req,
+    async (sessionId, userData) => {
+      await storeUser(sessionId, userData);
+    }
+  );
+  return response;
+});
 
 app.getWithLocalMiddleware("/", [userAuthLocalMiddleware], (req) => {
   const { currentUser } = app.getRequestPayload(req);

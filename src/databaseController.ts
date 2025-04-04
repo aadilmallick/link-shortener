@@ -58,6 +58,8 @@ export async function storeShortLink(
 
   // store the short link
   await kvdb.set(["shortLink", shortCode], data);
+
+  // store short link on user end
   const user = await getUser(userId);
   if (!user) {
     throw new Error("User not found");

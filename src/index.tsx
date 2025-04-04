@@ -1,6 +1,7 @@
 import { ComponentChildren } from "npm:preact";
 import { GitHubUser, ShortLink, User } from "./databaseController.ts";
 import { FileManager } from "./FileManager.ts";
+import { GoogleUser } from "./DenoOAuth.ts";
 
 const css = await FileManager.readFile(`${import.meta.dirname}/style.css`);
 const serverUrl =
@@ -28,9 +29,15 @@ const Layout = (props: { children: ComponentChildren }) => {
   );
 };
 
-export const HomePage = ({ user }: { user: User | null }) => {
+export const HomePage = ({
+  user,
+}: {
+  user: GitHubUser | GoogleUser | null;
+}) => {
   return (
-    <Layout>{user ? <CreateShortlinkPage /> : <UnauthenticatedPage />}</Layout>
+    <Layout>
+      {user ? <CreateShortlinkPage user={user} /> : <UnauthenticatedPage />}
+    </Layout>
   );
 };
 
@@ -39,11 +46,22 @@ export const LinksPage = ({
   user,
 }: {
   links: ShortLink[];
-  user: User;
+  user: GitHubUser | GoogleUser;
 }) => {
+  const header = () =>
+    "name" in user ? (
+      <div class="header-user-info">
+        <h1>Hello user {user.name}</h1>
+        <div className="img-container">
+          <img src={user.picture} />
+        </div>
+      </div>
+    ) : (
+      <h1>Hello user {user.login}</h1>
+    );
   return (
     <Layout>
-      <h1>Hello user {user.userId}</h1>
+      {header()}
       <ul>
         {links.map((link) => (
           <li key={link.shortCode} class="link-item">
@@ -78,15 +96,22 @@ const UnauthenticatedPage = () => {
       <a href="/oauth/signin" class="sign-in-github">
         Sign in with GitHub
       </a>
+      <a href="/oauth/google/signin" class="sign-in-github">
+        Sign in with Google
+      </a>
     </>
   );
 };
 
-function CreateShortlinkPage() {
+function CreateShortlinkPage({ user }: { user: GitHubUser | GoogleUser }) {
   return (
     <>
       <h2>Create a New Shortlink</h2>
-      <a href="/oauth/signout">Logout</a>
+      {"login" in user ? (
+        <a href="/oauth/signout">Logout of Github</a>
+      ) : (
+        <a href="/oauth/google/signout">Logout of Google</a>
+      )}
       <form action="/links" method="POST">
         <div>
           <label>

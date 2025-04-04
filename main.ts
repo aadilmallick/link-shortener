@@ -8,19 +8,16 @@ import {
   storeShortLink,
   storeUser,
   User,
+  getUserById,
 } from "./src/databaseController.ts";
 import { HomePage, LinksPage } from "./src/index.tsx";
-import { Router } from "./src/Router.ts";
 import { render } from "npm:preact-render-to-string";
-import { createGitHubOAuthConfig, createHelpers } from "jsr:@deno/kv-oauth";
-import { getCurrentUser, handleGithubCallback } from "./src/auth.ts";
-import { blue } from "jsr:@std/fmt@0.221/colors";
 import {
   app,
   userAuthLocalMiddleware,
   userAuthMiddleware,
 } from "./src/server.ts";
-import { githubAuth } from "./src/DenoOAuth.ts";
+import { githubAuth, googleAuth } from "./src/DenoOAuth.ts";
 
 app.get("/oauth/signin", async (req) => {
   return await githubAuth.signIn(req);
@@ -38,11 +35,30 @@ app.get(githubAuth.redirectUriPath, async (req: Request) => {
   return response;
 });
 
-app.getWithLocalMiddleware("/", [userAuthLocalMiddleware], (req) => {
+app.get("/oauth/google/signin", async (req) => {
+  return await googleAuth.signIn(req);
+});
+app.get("/oauth/google/signout", async (req) => {
+  return await googleAuth.signOut(req);
+});
+app.get(googleAuth.redirectUriPath, async (req: Request) => {
+  const response = await googleAuth.onGoogleCallback(
+    req,
+    async (sessionId, userData) => {
+      await storeUser(sessionId, userData);
+    }
+  );
+  return response;
+});
+
+app.getWithLocalMiddleware("/", [userAuthLocalMiddleware], async (req) => {
   const { currentUser } = app.getRequestPayload(req);
+  const user = currentUser?.userId
+    ? await getUserById(currentUser?.userId)
+    : null;
   const html = render(
     HomePage({
-      user: currentUser,
+      user,
     })
   );
   return new Response(html, {
@@ -61,10 +77,11 @@ app.getWithLocalMiddleware("/links", [userAuthLocalMiddleware], async (req) => {
   if (!currentUser) {
     return app.redirect("/");
   }
+  const user = (await getUserById(currentUser?.userId))!;
   const userLinks = await getLinksForUser(currentUser.userId);
   const html = render(
     LinksPage({
-      user: currentUser,
+      user,
       links: userLinks || [],
     })
   );

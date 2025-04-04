@@ -1,4 +1,5 @@
 import { KVDB } from "./DenoKV.ts";
+import { GoogleUser } from "./DenoOAuth.ts";
 
 /**
  * Data model:
@@ -29,13 +30,37 @@ export interface GitHubUser {
 export interface User {
   userId: string;
   shortCodes: string[];
+  type: "github" | "google";
 }
-const sessionsTable = kvdb.getTable<[string], GitHubUser>("sessions");
+const sessionsTable = kvdb.getTable<[string], GitHubUser | GoogleUser>(
+  "sessions"
+);
 const usersTable = kvdb.getTable<[string], User>("users");
 
-export async function storeUser(sessionId: string, userData: GitHubUser) {
+export async function storeUser(
+  sessionId: string,
+  userData: GitHubUser | GoogleUser
+) {
   await sessionsTable.set([sessionId], userData);
-  await usersTable.set([sessionId], { userId: sessionId, shortCodes: [] });
+  // google user
+  if ("name" in userData) {
+    await usersTable.set([sessionId], {
+      userId: sessionId,
+      shortCodes: [],
+      type: "google",
+    });
+  } else {
+    await usersTable.set([sessionId], {
+      userId: sessionId,
+      shortCodes: [],
+      type: "github",
+    });
+  }
+}
+
+export async function getUserById(userId: string) {
+  const res = await sessionsTable.get([userId]);
+  return res.value;
 }
 
 export async function getUser(sessionId: string) {
@@ -65,6 +90,7 @@ export async function storeShortLink(
     throw new Error("User not found");
   }
   await usersTable.set([userId], {
+    ...user,
     userId: user?.userId,
     shortCodes: [...new Set([...user.shortCodes, shortCode])],
   });

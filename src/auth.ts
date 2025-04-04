@@ -16,18 +16,3 @@ export async function getCurrentUser(req: Request) {
   console.log("sessionis", bgBlue(sessionId || "no session"));
   return sessionId ? await getUser(sessionId) : null;
 }
-
-// this function gets user data from GitHub and stores it in the database
-export async function handleGithubCallback(req: Request) {
-  const response = await githubAuth.onGithubCallback(
-    req,
-    async (sessionId, userData) => {
-      await storeUser(sessionId, userData);
-    }
-  );
-  // const { response, tokens, sessionId } = await handleCallback(req);
-  // const userData = await getGitHubProfile(tokens?.accessToken);
-  // const filteredData = pick(userData, ["avatar_url", "html_url", "login"]);
-  // await storeUser(sessionId, filteredData);
-  return response;
-}

@@ -1,0 +1,22 @@
+{
+  "tasks": {
+    "dev": "deno run -A --watch --env-file=.env --unstable-kv main.ts",
+    "start": "deno run -A --env-file=.env --unstable-kv main.ts"
+  },
+  "imports": {
+    "@std/assert": "jsr:@std/assert@1",
+    "@std/http": "jsr:@std/http@^1.0.12"
+  },
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "npm:preact"
+  },
+  "deploy": {
+    "project": "c3b8fdcf-956e-48c6-9b5a-77900154c9ec",
+    "exclude": [
+      "**/node_modules"
+    ],
+    "include": [],
+    "entrypoint": "main.ts"
+  }
+}

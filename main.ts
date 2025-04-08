@@ -3,12 +3,13 @@ import {
   deleteShortLink,
   getLinksForUser,
   getShortLink,
-  GitHubUser,
   incrementClickCount,
   storeShortLink,
   storeUser,
   User,
-  getUserById,
+  usersTable,
+  sessionsTable,
+  removeSessionId,
 } from "./src/databaseController.ts";
 import { HomePage, LinksPage } from "./src/index.tsx";
 import { render } from "npm:preact-render-to-string";
@@ -22,9 +23,17 @@ import { githubAuth, googleAuth } from "./src/DenoOAuth.ts";
 app.get("/oauth/signin", async (req) => {
   return await githubAuth.signIn(req);
 });
-app.get("/oauth/signout", async (req) => {
-  return await githubAuth.signOut(req);
-});
+app.getWithLocalMiddleware(
+  "/oauth/signout",
+  [userAuthLocalMiddleware],
+  async (req) => {
+    const { sessionId } = app.getRequestPayload(req);
+    if (sessionId) {
+      await removeSessionId(sessionId);
+    }
+    return await githubAuth.signOut(req);
+  }
+);
 app.get(githubAuth.redirectUriPath, async (req: Request) => {
   const response = await githubAuth.onGithubCallback(
     req,
@@ -38,9 +47,18 @@ app.get(githubAuth.redirectUriPath, async (req: Request) => {
 app.get("/oauth/google/signin", async (req) => {
   return await googleAuth.signIn(req);
 });
-app.get("/oauth/google/signout", async (req) => {
-  return await googleAuth.signOut(req);
-});
+app.getWithLocalMiddleware(
+  "/oauth/google/signout",
+  [userAuthLocalMiddleware],
+  async (req) => {
+    const { sessionId } = app.getRequestPayload(req);
+    if (sessionId) {
+      await removeSessionId(sessionId);
+    }
+
+    return await googleAuth.signOut(req);
+  }
+);
 app.get(googleAuth.redirectUriPath, async (req: Request) => {
   const response = await googleAuth.onGoogleCallback(
     req,
@@ -53,19 +71,12 @@ app.get(googleAuth.redirectUriPath, async (req: Request) => {
 
 app.getWithLocalMiddleware("/", [userAuthLocalMiddleware], async (req) => {
   const { currentUser } = app.getRequestPayload(req);
-  const user = currentUser?.userId
-    ? await getUserById(currentUser?.userId)
-    : null;
   const html = render(
     HomePage({
-      user,
+      user: currentUser,
     })
   );
-  return new Response(html, {
-    headers: {
-      "content-type": "text/html",
-    },
-  });
+  return app.renderHTML(html, 200);
 });
 
 app.serveStatic("/public");
@@ -77,11 +88,12 @@ app.getWithLocalMiddleware("/links", [userAuthLocalMiddleware], async (req) => {
   if (!currentUser) {
     return app.redirect("/");
   }
-  const user = (await getUserById(currentUser?.userId))!;
+
   const userLinks = await getLinksForUser(currentUser.userId);
+  console.log("user links", userLinks);
   const html = render(
     LinksPage({
-      user,
+      user: currentUser,
       links: userLinks || [],
     })
   );
@@ -139,6 +151,51 @@ app.get("/:shortCode", async (req, info, _params) => {
 
   // await storeShortLink(link.longUrl, shortCode, link.userId);
   return app.redirect(link.longUrl);
+});
+
+app.get("/realtime/:id", async (_req, info, params) => {
+  const shortCode = info?.pathname.groups["id"] as string;
+  const response = await fetch("/public/bruh.png");
+  const stream = response.body?.getReader();
+  if (!stream) {
+    return app.text("Stream not found", 404);
+  }
+  // Create stream response body
+  const body = new ReadableStream({
+    async start(controller) {
+      // Fetch initial data if needed
+      // const initialData = await getShortLink(shortCode);
+      // controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ clickCount: initialData.clickCount })}\n\n`));
+
+      while (true) {
+        const { done, value } = await stream.read();
+        if (done) {
+          return;
+        }
+        const bits = value?.length;
+
+        controller.enqueue(
+          new TextEncoder().encode(
+            `data: ${JSON.stringify({
+              bits,
+            })}\n\n`
+          )
+        );
+        console.log("Stream updated");
+      }
+    },
+    cancel() {
+      stream.cancel();
+    },
+  });
+
+  return new Response(body, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    },
+  });
 });
 
 app.initServer();

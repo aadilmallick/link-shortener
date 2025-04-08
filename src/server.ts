@@ -7,22 +7,29 @@ type AppState = {
   currentUser: null | User;
 };
 
-export const app = new Router<AppState, AppState>(
+export const app = new Router<
+  AppState,
+  {
+    currentUser: null | User;
+    sessionId: string | null;
+  }
+>(
   {
     currentUser: null,
   },
   {
     currentUser: null,
+    sessionId: null as string | null,
   }
 );
 
 export const userAuthMiddleware = app.produceGlobalMiddleware(
   async (_state, req) => {
-    const currentUser = await getCurrentUser(req);
-    console.log(blue("middleware running"));
-    console.log("current user", currentUser);
+    const data = await getCurrentUser(req);
+    console.log(blue("global middleware running"));
+    console.log("current user", data?.user);
     return {
-      currentUser: currentUser,
+      currentUser: data?.user,
     };
   }
 );
@@ -32,8 +39,15 @@ export const userAuthLocalMiddleware = app.produceLocalMiddleware(
     const currentUser = await getCurrentUser(req);
     console.log(blue("local middleware running"));
     console.log("current user", currentUser);
+    if (!currentUser) {
+      return {
+        currentUser: null,
+        sessionId: null,
+      };
+    }
     return {
-      currentUser: currentUser,
+      currentUser: currentUser.user,
+      sessionId: currentUser.sessionId,
     };
   }
 );

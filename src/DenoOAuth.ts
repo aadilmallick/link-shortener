@@ -1,22 +1,18 @@
-import {
-  createGitHubOAuthConfig,
-  createHelpers,
-  Helpers,
-} from "jsr:@deno/kv-oauth";
+import { createGitHubOAuthConfig, createHelpers } from "jsr:@deno/kv-oauth";
 import { pick } from "jsr:@std/collections/pick";
 import { createGoogleOAuthConfig } from "jsr:@deno/kv-oauth";
-
-interface GitHubUser {
-  login: string;
-  avatar_url: string;
-  html_url: string;
-}
 
 export interface GoogleUser {
   id: string;
   name: string;
   picture: string;
   email?: string;
+}
+
+export interface GitHubUser {
+  login: string;
+  avatar_url: string;
+  html_url: string;
 }
 
 export class GitHubOAuth {

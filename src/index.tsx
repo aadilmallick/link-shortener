@@ -1,5 +1,5 @@
 import { ComponentChildren } from "npm:preact";
-import { GitHubUser, ShortLink, User } from "./databaseController.ts";
+import { User, ShortLink } from "./databaseController.ts";
 import { FileManager } from "./FileManager.ts";
 import { GoogleUser } from "./DenoOAuth.ts";
 
@@ -29,11 +29,7 @@ const Layout = (props: { children: ComponentChildren }) => {
   );
 };
 
-export const HomePage = ({
-  user,
-}: {
-  user: GitHubUser | GoogleUser | null;
-}) => {
+export const HomePage = ({ user }: { user: User | null }) => {
   return (
     <Layout>
       {user ? <CreateShortlinkPage user={user} /> : <UnauthenticatedPage />}
@@ -46,18 +42,18 @@ export const LinksPage = ({
   user,
 }: {
   links: ShortLink[];
-  user: GitHubUser | GoogleUser;
+  user: User;
 }) => {
   const header = () =>
     "name" in user ? (
       <div class="header-user-info">
         <h1>Hello user {user.name}</h1>
         <div className="img-container">
-          <img src={user.picture} />
+          <img src={user.data.profilePictureUrl} />
         </div>
       </div>
     ) : (
-      <h1>Hello user {user.login}</h1>
+      <h1>Hello user {user.data.username}</h1>
     );
   return (
     <Layout>
@@ -103,11 +99,11 @@ const UnauthenticatedPage = () => {
   );
 };
 
-function CreateShortlinkPage({ user }: { user: GitHubUser | GoogleUser }) {
+function CreateShortlinkPage({ user }: { user: User }) {
   return (
     <>
       <h2>Create a New Shortlink</h2>
-      {"login" in user ? (
+      {user.type === "github" ? (
         <a href="/oauth/signout">Logout of Github</a>
       ) : (
         <a href="/oauth/google/signout">Logout of Google</a>

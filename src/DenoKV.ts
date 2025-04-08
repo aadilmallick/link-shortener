@@ -1,5 +1,3 @@
-import { it } from "node:test";
-
 class DatabaseError extends Error {
   constructor(message: string) {
     super(message);
@@ -35,6 +33,34 @@ class AtomicDeleteOperation extends AtomicOperation {
 
   override execute(res: Deno.AtomicOperation): Deno.AtomicOperation {
     return res.delete(this.key);
+  }
+}
+
+class AtomicCheckOperation extends AtomicOperation {
+  override type: "check" | "set" | "delete" = "delete";
+  override value: unknown = null;
+  constructor(public key: string[], public versionstamp: string | null) {
+    super();
+  }
+
+  override execute(res: Deno.AtomicOperation): Deno.AtomicOperation {
+    return res.check({
+      key: this.key,
+      versionstamp: this.versionstamp,
+    });
+  }
+}
+
+class AtomicNotExistCheckOperation extends AtomicCheckOperation {
+  constructor(key: string[]) {
+    super(key, null);
+  }
+
+  override execute(res: Deno.AtomicOperation): Deno.AtomicOperation {
+    return res.check({
+      key: this.key,
+      versionstamp: this.versionstamp,
+    });
   }
 }
 
@@ -150,11 +176,31 @@ export class KVDBTable<KeyType extends string[], ValueType> {
     await this.kv.delete([...this.keyPrefix, ...key]);
   }
 
+  async deleteTable() {
+    const list = this.kv.list<ValueType>({
+      prefix: this.keyPrefix,
+    });
+    for await (const item of list) {
+      await this.kv.delete(item.key);
+    }
+  }
+
   produceSetAction(key: KeyType, value: ValueType) {
     return new AtomicSetOperation([...this.keyPrefix, ...key], value);
   }
 
   produceDeleteAction(key: KeyType) {
     return new AtomicDeleteOperation([...this.keyPrefix, ...key]);
+  }
+
+  produceCheckAction(key: KeyType, versionstamp?: string) {
+    if (versionstamp) {
+      return new AtomicCheckOperation(
+        [...this.keyPrefix, ...key],
+        versionstamp
+      );
+    } else {
+      return new AtomicNotExistCheckOperation([...this.keyPrefix, ...key]);
+    }
   }
 }

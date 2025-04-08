@@ -19,7 +19,7 @@ export type ShortLink = {
   lastClickEvent?: string;
 };
 
-export const kvdb = await KVDB.init("kv1.sqlite3");
+export const kvdb = await KVDB.init();
 
 export interface User {
   userId: string; // username or email will be key
@@ -90,6 +90,10 @@ export const sessionsTable = kvdb.getTable<
     userId: string;
   }
 >(["sessions"]);
+
+// await shortLinksTable.deleteTable();
+// await usersTable.deleteTable();
+// await sessionsTable.deleteTable();
 
 export async function storeUser(
   sessionId: string,

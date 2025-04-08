@@ -51,3 +51,13 @@ export const userAuthLocalMiddleware = app.produceLocalMiddleware(
     };
   }
 );
+
+export async function tryOperationSucceeded(cb: () => Promise<void>) {
+  try {
+    await cb();
+    return true;
+  } catch (error) {
+    console.error("Error in operation", error);
+    return false;
+  }
+}

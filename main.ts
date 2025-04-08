@@ -15,6 +15,7 @@ import { HomePage, LinksPage } from "./src/index.tsx";
 import { render } from "npm:preact-render-to-string";
 import {
   app,
+  tryOperationSucceeded,
   userAuthLocalMiddleware,
   userAuthMiddleware,
 } from "./src/server.ts";
@@ -100,15 +101,26 @@ app.getWithLocalMiddleware("/links", [userAuthLocalMiddleware], async (req) => {
   return app.renderHTML(html, 200);
 });
 
-// app.deleteWithLocalMiddleware(
-//   "/links/:id",
-//   [userAuthLocalMiddleware],
-//   async (_req, _info, params) => {
-//     const shortCode = (params as unknown as { id: string })?.id;
-//     await deleteShortLink(shortCode);
-//     return app.json({ message: "Short link deleted" }, 200);
-//   }
-// );
+app.postWithLocalMiddleware(
+  "/links/delete/:shortCode",
+  [userAuthLocalMiddleware],
+  async (req, info, _params) => {
+    const shortCode = info?.pathname.groups["shortCode"] as string;
+
+    const { currentUser } = app.getRequestPayload(req);
+
+    if (!currentUser) {
+      return app.json({ error: "Unauthorized" }, 401);
+    }
+    const success = await tryOperationSucceeded(async () => {
+      await deleteShortLink(currentUser.userId, shortCode);
+    });
+    if (!success) {
+      return app.json({ error: "Failed to delete short link" }, 500);
+    }
+    return app.redirect("/links");
+  }
+);
 
 app.postWithLocalMiddleware(
   "/links",

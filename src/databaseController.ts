@@ -193,10 +193,11 @@ export async function getLinksForUser(userId: string) {
   return links;
 }
 
-export async function deleteShortLink(sessionId: string, shortCode: string) {
-  const { userLinksTable } = await getUserDBData(sessionId);
-  // await shortLinksTable.delete([shortCode]);
-  // await userLinksTable.delete([shortCode]);
+export async function deleteShortLink(userId: string, shortCode: string) {
+  const userLinksTable = kvdb.getTable<[string], { shortCode: string }>([
+    "users",
+    userId,
+  ]);
   await kvdb.atomic([
     shortLinksTable.produceDeleteAction([shortCode]),
     userLinksTable.produceDeleteAction([shortCode]),

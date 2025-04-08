@@ -77,6 +77,11 @@ export const LinksPage = ({
                   target="_blank"
                 >{`${serverUrl}/${link.shortCode}`}</a>
               </p>
+              <form action={`/links/delete/${link.shortCode}`} method="POST">
+                <button type="submit" class="delete-button">
+                  Delete
+                </button>
+              </form>
             </div>
           </li>
         ))}

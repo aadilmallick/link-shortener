@@ -132,13 +132,36 @@ app.postWithLocalMiddleware(
     }
     const formData = await req.formData();
     const longUrl = formData.get("longUrl");
+    const shortCodeParam = formData.get("shortCode");
+    const descriptionParam = formData.get("description");
+
+    const description = descriptionParam !== null ? (descriptionParam as string) : undefined;
+
+    if (shortCodeParam) {
+      // Editing existing shortlink
+      const existing = await getShortLink(shortCodeParam as string);
+      if (!existing) {
+        return app.json({ error: "Short link not found" }, 404);
+      }
+      if (existing.userId !== currentUser.userId) {
+        return app.json({ error: "Unauthorized" }, 401);
+      }
+      await storeShortLink(
+        longUrl ? (longUrl as string) : existing.longUrl,
+        shortCodeParam as string,
+        currentUser.userId,
+        description
+      );
+      return app.redirect("/links");
+    }
+
     if (!longUrl) {
       return app.json({ error: "Long URL is required" }, 400);
     }
 
     // create short link associated with the user
     const shortCode = await generateShortCode(longUrl as string);
-    await storeShortLink(longUrl as string, shortCode, currentUser.userId);
+    await storeShortLink(longUrl as string, shortCode, currentUser.userId, description);
 
     return app.redirect("/links");
   }

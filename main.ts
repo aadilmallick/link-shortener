@@ -161,6 +161,10 @@ app.postWithLocalMiddleware(
 
     // create short link associated with the user
     const shortCode = await generateShortCode(longUrl as string);
+    const existing = await getShortLink(shortCode);
+    if (existing && existing.userId !== currentUser.userId) {
+      return app.json({ error: "Short code already in use" }, 409);
+    }
     await storeShortLink(longUrl as string, shortCode, currentUser.userId, description);
 
     return app.redirect("/links");

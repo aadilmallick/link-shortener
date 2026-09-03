@@ -17,6 +17,7 @@ const Layout = (props: { children: ComponentChildren }) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Link Shortener</title>
         <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
         <style>{css}</style>
       </head>
       <body class="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900">
@@ -40,6 +41,94 @@ const Layout = (props: { children: ComponentChildren }) => {
           </div>
         </nav>
         {props.children}
+        <script dangerouslySetInnerHTML={{ __html: `
+          window.openQrModal = function(url, shortCode) {
+            window.currentQrUrl = url;
+            window.currentShortCode = shortCode;
+            var modal = document.getElementById('qr-modal');
+            var modalTitle = document.getElementById('qr-modal-title');
+            var canvas = document.getElementById('qr-canvas');
+            if (modalTitle) modalTitle.textContent = 'QR Code for /' + shortCode;
+
+            if (typeof qrcode !== 'undefined' && canvas) {
+              try {
+                var qr = qrcode(0, 'M');
+                qr.addData(url);
+                qr.make();
+
+                var moduleCount = qr.getModuleCount();
+                var cellSize = Math.max(6, Math.floor(280 / moduleCount));
+                var margin = 16;
+                var size = moduleCount * cellSize + margin * 2;
+
+                canvas.width = size;
+                canvas.height = size;
+                var ctx = canvas.getContext('2d');
+
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, size, size);
+
+                ctx.fillStyle = '#111827';
+                for (var r = 0; r < moduleCount; r++) {
+                  for (var c = 0; c < moduleCount; c++) {
+                    if (qr.isDark(r, c)) {
+                      ctx.fillRect(margin + c * cellSize, margin + r * cellSize, cellSize, cellSize);
+                    }
+                  }
+                }
+              } catch (e) {
+                console.error('Error generating QR code:', e);
+              }
+            }
+            if (modal) modal.classList.remove('hidden');
+          };
+
+          window.closeQrModal = function() {
+            var modal = document.getElementById('qr-modal');
+            if (modal) modal.classList.add('hidden');
+          };
+
+          window.shareQrCode = async function() {
+            var canvas = document.getElementById('qr-canvas');
+            var shareBtnText = document.getElementById('share-btn-text');
+            var origText = shareBtnText ? shareBtnText.textContent : 'Share';
+
+            if (!canvas) return;
+
+            try {
+              canvas.toBlob(async function(blob) {
+                if (!blob) return;
+                var fileName = 'qr-code-' + (window.currentShortCode || 'link') + '.png';
+                var file = new File([blob], fileName, { type: 'image/png' });
+                var shareData = {
+                  title: 'QR Code for ' + window.currentShortCode,
+                  text: 'Check out this short link: ' + window.currentQrUrl,
+                  url: window.currentQrUrl
+                };
+
+                if (navigator.share) {
+                  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({
+                      files: [file],
+                      title: shareData.title,
+                      text: shareData.text
+                    });
+                  } else {
+                    await navigator.share(shareData);
+                  }
+                } else {
+                  await navigator.clipboard.writeText(window.currentQrUrl);
+                  if (shareBtnText) shareBtnText.textContent = 'Link Copied!';
+                  setTimeout(function() {
+                    if (shareBtnText) shareBtnText.textContent = origText;
+                  }, 2000);
+                }
+              }, 'image/png');
+            } catch (err) {
+              console.error('Error sharing QR Code:', err);
+            }
+          };
+        ` }} />
       </body>
     </html>
   );
@@ -139,17 +228,68 @@ export const LinksPage = ({
                           <p class="text-sm text-white whitespace-nowrap">{new Date(link.createdAt).toLocaleDateString()}</p>
                         </div>
                       </div>
-                      <form action={`/links/delete/${link.shortCode}`} method="POST">
-                        <button type="submit" class="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 hover:text-red-300 rounded-lg border border-red-500/30 hover:border-red-500/60 transition-all duration-200 font-medium">
-                          🗑️ Delete
+                      <div class="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={`openQrModal('${serverUrl}/${link.shortCode}', '${link.shortCode}')`}
+                          class="px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 hover:text-purple-200 rounded-lg border border-purple-500/30 hover:border-purple-500/60 transition-all duration-200 font-medium flex items-center gap-2"
+                        >
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                          </svg>
+                          Create QR Code
                         </button>
-                      </form>
+                        <form action={`/links/delete/${link.shortCode}`} method="POST">
+                          <button type="submit" class="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 hover:text-red-300 rounded-lg border border-red-500/30 hover:border-red-500/60 transition-all duration-200 font-medium">
+                            🗑️ Delete
+                          </button>
+                        </form>
+                      </div>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
           )}
+        </div>
+      </div>
+
+      {/* QR Code Modal */}
+      <div id="qr-modal" class="fixed inset-0 bg-black/70 backdrop-blur-md hidden flex items-center justify-center z-50 p-4 transition-all duration-300">
+        <div class="bg-gray-800/90 border border-purple-500/40 rounded-2xl p-6 md:p-8 max-w-sm w-full shadow-2xl shadow-purple-500/20 flex flex-col items-center relative transform transition-all duration-300">
+          <button
+            type="button"
+            onClick="closeQrModal()"
+            class="absolute top-4 right-4 text-gray-400 hover:text-white p-2 rounded-lg hover:bg-gray-700/50 transition-colors"
+            aria-label="Close modal"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <h3 id="qr-modal-title" class="text-xl font-bold text-white mb-4 text-center">QR Code</h3>
+          <div class="p-4 bg-white rounded-xl shadow-inner mb-6 flex items-center justify-center">
+            <canvas id="qr-canvas" class="block max-w-full h-auto"></canvas>
+          </div>
+          <div class="flex items-center gap-3 w-full">
+            <button
+              type="button"
+              onClick="shareQrCode()"
+              class="flex-1 px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg flex items-center justify-center gap-2"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+              </svg>
+              <span id="share-btn-text">Share QR Code</span>
+            </button>
+            <button
+              type="button"
+              onClick="closeQrModal()"
+              class="px-4 py-3 bg-gray-700/50 hover:bg-gray-700 text-gray-300 hover:text-white font-medium rounded-xl border border-gray-600/50 transition-colors"
+            >
+              Close
+            </button>
+          </div>
         </div>
       </div>
     </Layout>

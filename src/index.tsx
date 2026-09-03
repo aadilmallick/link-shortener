@@ -102,6 +102,12 @@ export const LinksPage = ({
                 <div key={link.shortCode} class="bg-gray-800/50 backdrop-blur-lg rounded-xl p-6 border border-purple-500/30 hover:border-purple-500/60 transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/20 transform hover:-translate-y-1">
                   <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                     <div class="flex-1 space-y-3">
+              {link.description && (
+                <div>
+                  <p class="text-sm text-gray-400 mb-1">Description</p>
+                  <p class="text-gray-200 font-medium whitespace-pre-wrap">{link.description}</p>
+                </div>
+              )}
                       <div>
                         <p class="text-sm text-gray-400 mb-1">Original URL</p>
                         <a href={link.longUrl} target="_blank" class="text-purple-400 hover:text-purple-300 break-all font-medium transition-colors">
@@ -223,6 +229,18 @@ function CreateShortlinkPage({ user }: { user: User }) {
               id="longUrl"
               required
               placeholder="https://example.com/your-very-long-url-here"
+              class="w-full px-4 py-3 bg-gray-900/50 border border-purple-500/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
+            />
+          </div>
+          <div>
+            <label for="description" class="block text-sm font-medium text-gray-300 mb-2">
+              Description (optional)
+            </label>
+            <textarea
+              name="description"
+              id="description"
+              placeholder="Describe what this link is for..."
+              rows={3}
               class="w-full px-4 py-3 bg-gray-900/50 border border-purple-500/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
             />
           </div>

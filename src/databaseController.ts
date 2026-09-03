@@ -17,6 +17,7 @@ export type ShortLink = {
   userId: string;
   clickCount: number;
   lastClickEvent?: string;
+  description?: string;
 };
 
 export const kvdb = await KVDB.init();
@@ -146,15 +147,19 @@ async function getUserDBData(sessionId: string) {
 export async function storeShortLink(
   longUrl: string,
   shortCode: string,
-  userId: string
+  userId: string,
+  description?: string
 ) {
   // const { user, userLinksTable } = await getUserDBData(userId);
+  const existing = await getShortLink(shortCode);
   const data: ShortLink = {
     shortCode,
     longUrl,
     userId: userId,
-    createdAt: Date.now(),
-    clickCount: 0,
+    createdAt: existing ? existing.createdAt : Date.now(),
+    clickCount: existing ? existing.clickCount : 0,
+    lastClickEvent: existing ? existing.lastClickEvent : undefined,
+    description,
   };
   // add shortlink like ["users", userId, shortCode] -> null
   // query shortlink from user by listin all keys under ["users", userId], then

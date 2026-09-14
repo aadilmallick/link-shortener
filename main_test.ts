@@ -51,4 +51,32 @@ Deno.test("Short link description handling", async (t) => {
     assertExists(retrieved2);
     assertEquals(retrieved2.description, updatedDesc);
   });
+
+  await t.step("should prevent cross-user short code overwrites", async () => {
+    const originalUrl = "https://example.com/collision-test";
+    const shortCode = await generateShortCode(originalUrl);
+    const ownerUserId = "collision-owner";
+    const otherUserId = "collision-other";
+    const originalDescription = "Owner description";
+
+    await storeShortLink(originalUrl, shortCode, ownerUserId, originalDescription);
+
+    await assertRejects(
+      () =>
+        storeShortLink(
+          "https://example.com/attacker-url",
+          shortCode,
+          otherUserId,
+          "Attacker description"
+        ),
+      Error,
+      "Short code already belongs to another user"
+    );
+
+    const stored = await getShortLink(shortCode);
+    assertExists(stored);
+    assertEquals(stored.userId, ownerUserId);
+    assertEquals(stored.longUrl, originalUrl);
+    assertEquals(stored.description, originalDescription);
+  });
 });

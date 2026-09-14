@@ -152,6 +152,9 @@ export async function storeShortLink(
 ) {
   // const { user, userLinksTable } = await getUserDBData(userId);
   const existing = await getShortLink(shortCode);
+  if (existing && existing.userId !== userId) {
+    throw new Error("Short code already belongs to another user");
+  }
   const data: ShortLink = {
     shortCode,
     longUrl,
